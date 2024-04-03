@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: engine-qa-a5000
+spec:
+  selector:
+    matchLabels:
+      app: engine-qa-a5000
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: engine-qa-a5000
+    spec:
+      nodeSelector:
+        nodetype: gpu
+        gpuspecs: A5000_24GB
+      tolerations:
+      - effect: NoSchedule
+        operator: Equal
+        value: "gpu"
+        key: "nodetype"
+      containers:
+      - name: engine-qa-a5000
+        tty: true
+        image: 498127099666.dkr.ecr.us-east-1.amazonaws.com/mlops/k8s-engine-dev-ssh-tmp:latest
+        imagePullPolicy: Always
+        env:
+        - name: HF_HOME
+          value: "/data/cache"
+        - name: PIP_CACHE_DIR
+          value: "/data/cache"
+        volumeMounts:
+        - name: shared-network-drive
+          mountPath: "/network"
+        - name: dshm 
+          mountPath: "/dev/shm"
+        - name: external-volume
+          mountPath: "/data"
+        resources:
+          limits:
+            memory: "50G"
+            cpu: "8"
+            nvidia.com/gpu: 1
+      volumes:
+      - name: shared-network-drive
+        nfs: 
+          server: storage-gateway.wisp.internal.neuralmagic.com
+          path: /on-prem-storage-gw
+      - name: dshm 
+        emptyDir: 
+          medium: Memory
+      - name: external-volume
+        hostPath:
+          path: "/cache"
